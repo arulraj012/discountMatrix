@@ -1,0 +1,53 @@
+{
+  "name": "cxDiscountmatrix",
+  "version": "1.0.0",
+  "description": "A simple CAP project.",
+  "dependencies": {
+    "@cap-js/hana": "^2",
+    "@sap-cloud-sdk/http-client": "^4.2.0",
+    "@sap/cds": "^9",
+    "@sap/xssec": "^4",
+    "csv-parser": "^3.2.0",
+    "express": "^4"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^2",
+    "@sap/cds-dk": "^9"
+  },
+  "scripts": {
+    "start": "cds-serve"
+  },
+  "private": true,
+  "cds": {
+    "server": {
+      "bodyParser": {
+        "limit": "20mb"
+      }
+    },
+    "requires": {
+      "[production]": {
+        "auth": "xsuaa"
+      },
+      "Sales.Quote.Service": {
+        "kind": "rest",
+        "model": "srv/external/SalesSvcCloudV2_salesQuoteService",
+        "[production]": {
+          "credentials": {
+            "destination": "SSC_V2_API",
+            "path": "/sap/c4c/api/v1/sales-quote-service"
+          }
+        }
+      },
+      "Employee.Service": {
+        "kind": "rest",
+        "model": "srv/external/SalesSvcCloudV2_employeeService",
+        "[production]": {
+          "credentials": {
+            "destination": "SSC_V2_API",
+            "path": "/sap/c4c/api/v1/employee-service"
+          }
+        }
+      }
+    }
+  }
+}
