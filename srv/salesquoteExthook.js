@@ -132,12 +132,130 @@ async function deleteSalesQuotePParty(salesQuoteSrv, quoteId, partyUUID, etag) {
         }
     });
 }
+function hasNewLineAdded(beforeImage = {}, currentImage = {}) {
+
+    const beforeItems = beforeImage.items || [];
+    const currentItems = currentImage.items || [];
+
+    const beforeItemCount = beforeItems.length;
+    const currentItemCount = currentItems.length;
+
+    console.log("Before item count:", beforeItemCount);
+    console.log("Current item count:", currentItemCount);
+
+    const beforeIds = new Set(beforeItems.map(item => item.id));
+
+    for (const item of currentItems) {
+        if (!beforeIds.has(item.id)) {
+            console.log("hasNewLineAdded:", hasNewLineAdded);
+            return true; // New item detected
+        }
+    }
+
+    return false;
+}
+
+function getHeaderDiscount(image = {}) {
+    const priceElements = image.priceElements || [];
+    console.log("getHeaderDiscount priceElements:", priceElements);
+    const discount = priceElements.find(pe =>
+        pe.conditionType === "ZSDP"
+    );
+
+    return Number(discount?.rateAmount?.content ?? 0);
+}
+
+function isDiscountChanged(beforeImage = {}, currentImage = {}) {
+
+    const beforeDiscount = getHeaderDiscount(beforeImage);
+    console.log("beforeDiscount:", beforeDiscount);
+    const currentDiscount = getHeaderDiscount(currentImage);
+    console.log("currentDiscount:", currentDiscount);
+    return beforeDiscount !== currentDiscount;
+}
+
+async function withdrawQuoteApproval(salesQuoteSrv, quoteId, etag, payload) {
+    try {
+        const response = await salesQuoteSrv.send({
+            method: 'POST',
+            path: `/salesQuotes/${quoteId}/withdrawApproval`,
+            headers: {
+                'If-Match': etag,
+                'Content-Type': 'application/merge-patch+json'
+            },
+            data: payload
+        });
+        console.log("Response:", response);
+    } catch (error) {
+
+        console.error(
+            "Approval submission failed:",
+            error?.response?.data || error.message
+        );
+
+        throw error;
+    }
+    console.log("Approval withdrawn successfully");
+}
 
 class salesquoteExthook extends cds.ApplicationService {
     init() {
 
         this.on('SalesQuotePrehook', async (req) => {
             console.log("SalesQuotePrehook event triggered");
+        });
+
+        this.on('withdrawApproval', async (req) => {
+            console.log("withdrawApproval event triggered");
+            try {
+                //console.log("Incoming Payload:", JSON.stringify(req.data));
+                const { data } = req.data;
+                const currentImage = data.currentImage;
+                const beforeImage = data.beforeImage;
+                const approvalStatus = currentImage.approvalStatus;
+                if (!currentImage) {
+                    console.error("Missing 'currentImage' in request data");
+                    return req.error(400, "Missing 'currentImage' in request data");
+                }
+                //console.log("Current Image:", JSON.stringify(currentImage));
+
+                // Connect to Sales Quote Service
+                console.log("Connecting to Sales.Quote.Service...");
+                const salesQuoteSrv = await cds.connect.to('Sales.Quote.Service');
+
+                const quoteId = currentImage?.id;
+                if (!quoteId) {
+                    console.error("Missing Sales Quote ID");
+                    return req.error(400, "Missing Sales Quote ID");
+                }
+                console.log("Sales Quote ID:", quoteId);
+                //extensions
+                const ext = currentImage.extensions || {};
+
+                const newLineAdded = hasNewLineAdded(beforeImage, currentImage);
+                const discountChanged = isDiscountChanged(beforeImage, currentImage);
+                console.log("newLineAdded for this Sales Order:" + newLineAdded);
+                console.log("discountChanged for this Sales Order:" + discountChanged);
+                if (newLineAdded || discountChanged) {
+                    console.log("Approval must be withdrawn", approvalStatus);
+                    // Build PATCH payload
+                    const patchPayload = {
+                        withdrawalNote: "withdraw"
+                    }
+                    let { etag: quoteEtag, payload: quote } = await getSalesQuoteEtag(salesQuoteSrv, quoteId);
+                    console.log("Withdraw the Quote for approval via API");
+                    await withdrawQuoteApproval(salesQuoteSrv,
+                        quoteId,
+                        quoteEtag, patchPayload
+                    );
+
+                }
+
+
+            } catch (e) {
+                console.error("InitializeSalesQuotePriceExtFields handler failed:", e?.message || e);
+                return req.error(500, "Internal error in SalesQuoteAutoflow handler");
+            }
         });
 
         this.on('InitializeSalesQuotePriceExtFields', async (req) => {
@@ -170,7 +288,7 @@ class salesquoteExthook extends cds.ApplicationService {
                 const Approval_Level = ext?.Approval_Level;
                 console.log(" price Extension fields Approval_Level " + Approval_Level);
 
-                if (Approval_Level !== undefined && Approval_Level !== null ) {
+                if (Approval_Level !== undefined && Approval_Level !== null) {
 
                     // Get quote id
                     console.log(` Quote ID: ${quoteId}`);

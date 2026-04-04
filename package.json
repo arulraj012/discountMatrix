@@ -47,6 +47,16 @@
             "path": "/sap/c4c/api/v1/employee-service"
           }
         }
+      },
+      "Case.Service": {
+        "kind": "rest",
+        "model": "srv/external/SalesSvcCloudV2_case",
+        "[production]": {
+          "credentials": {
+            "destination": "SSC_V2_API",
+            "path": "/sap/c4c/api/v1/case-service"
+          }
+        }
       }
     }
   }
