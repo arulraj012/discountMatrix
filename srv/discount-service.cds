@@ -1,6 +1,6 @@
 using {automotive.discounts as my} from '../db/schema';
 
-@protocol: 'rest'
+@protocol: 'odata'
 service DiscountMatrixSrv @(path: '/api/v1') {
 
   entity BusinessUserRoles  as projection on my.BusinessUserRoles;
