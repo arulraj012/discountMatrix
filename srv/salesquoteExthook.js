@@ -1,16 +1,28 @@
 const cds = require('@sap/cds')
 const { executeHttpRequest } = require('@sap-cloud-sdk/http-client');
-const RELEVANT_CONDITIONS = ["ZSDP", "VPRS", "QSBP"];
+//const RELEVANT_CONDITIONS = ["ZSDP", "VPRS", "QSBP"];
 // ===== Helper functions  =====
 function extractComparablePricing(image = {}) {
+
     const priceElements = image.priceElements || [];
     const totalValues = image.totalValues || {};
 
     const getCond = (type) =>
         priceElements.find(pe => pe.conditionType === type);
 
-    const cost = getCond('QMMC');   // or VPRS
-    const discount = getCond('ZSDP');
+    const getAllConds = (type) =>
+        priceElements.filter(pe => pe.conditionType === type);
+
+    const cost = getCond('QMMC'); // or VPRS
+
+    // Read all ZTOT rows
+    const ztotConditions = getAllConds('ZTOT');
+
+    // Consolidate all ZTOT percentages
+    const totalDiscountPercent = ztotConditions.reduce((sum, item) => {
+        const value = Number(item?.rateAmount?.content ?? 0);
+        return sum + value;
+    }, 0);
 
     return {
         sellingPrice: Number(totalValues?.grossAmount?.content ?? 0),
@@ -22,7 +34,8 @@ function extractComparablePricing(image = {}) {
             cost?.rateAmount?.currencyCode ??
             'SAR',
 
-        discountPercent: Math.abs(Number(discount?.rateAmount?.content ?? 0))
+        // Absolute consolidated discount %
+        discountPercent: Math.abs(totalDiscountPercent)
     };
 }
 
@@ -42,14 +55,27 @@ function extractHeaderPricing(currentImage = {}) {
     const priceElements = currentImage.priceElements || [];
     const totalValues = currentImage.totalValues || {};
 
+    // Get single condition
     const getCond = (type) =>
         priceElements.find(pe => pe.conditionType === type);
 
-    const cost = getCond('QMMC');     // Cost price
-    const discount = getCond('ZSDP'); // Discount %
+    // Get all matching conditions
+    const getAllConds = (type) =>
+        priceElements.filter(pe => pe.conditionType === type);
+
+    const cost = getCond('QMMC'); // Cost price
+
+    // Read all ZTOT rows
+    const ztotConditions = getAllConds('ZTOT');
+
+    // Consolidate all percentage values
+    const totalDiscountPercent = ztotConditions.reduce((sum, item) => {
+        const value = Number(item?.rateAmount?.content ?? 0);
+        return sum + value;
+    }, 0);
 
     return {
-        //  Selling price from TOTAL VALUES grossAmount)
+        // Selling price from TOTAL VALUES grossAmount
         sellingPrice: totalValues?.grossAmount?.content ?? 0,
         sellingCurrency: totalValues?.grossAmount?.currencyCode ?? 'SAR',
 
@@ -60,11 +86,10 @@ function extractHeaderPricing(currentImage = {}) {
             cost?.rateAmount?.currencyCode ??
             'SAR',
 
-        // Discount %
-        discountPercent: Number(discount?.rateAmount?.content ?? 0)
+        // Consolidated ZTOT %
+        discountPercent: totalDiscountPercent
     };
 }
-
 function findPartyByRole(partyId, role, quote) {
     return quote?.parties?.find(p =>
         p.role === role
@@ -156,13 +181,19 @@ function hasNewLineAdded(beforeImage = {}, currentImage = {}) {
 }
 
 function getHeaderDiscount(image = {}) {
+
     const priceElements = image.priceElements || [];
-    console.log("getHeaderDiscount priceElements:", priceElements);
-    const discount = priceElements.find(pe =>
-        pe.conditionType === "ZSDP"
+
+    // Get all ZTOT conditions
+    const ztotConditions = priceElements.filter(pe =>
+        pe.conditionType === "ZTOT"
     );
 
-    return Number(discount?.rateAmount?.content ?? 0);
+    // Sum all percentage values
+    return ztotConditions.reduce((sum, item) => {
+        const value = Number(item?.rateAmount?.content ?? 0);
+        return sum + value;
+    }, 0);
 }
 
 function isDiscountChanged(beforeImage = {}, currentImage = {}) {
@@ -330,8 +361,8 @@ class salesquoteExthook extends cds.ApplicationService {
         });
 
 
-        this.on('SalesQuoteAutoflow', async (req) => {
-            console.log("SalesQuoteAutoflow event triggered");
+        this.on('triggerQuoteDiscountMatrix', async (req) => {
+            console.log("triggerQuoteDiscountMatrix event triggered");
 
             const { data } = req.data;
             const DiscountMatrix = 'automotive.discounts.discountMatrix';
@@ -407,7 +438,10 @@ class salesquoteExthook extends cds.ApplicationService {
                 let approvers = [];
                 console.log("4.Approval matrix Extracted Header  discount:", discountPercent);
 
-                if (isBelowCost) {
+                if (discountPercent === 0) {
+                    approvalLevelCode = '00';
+                }
+                else if (isBelowCost) {
                     //  OVERRIDE CASE → Selling < Cost
                     console.log("4.Selling price below cost → forcing all approval levels");
 
@@ -424,8 +458,6 @@ class salesquoteExthook extends cds.ApplicationService {
 
                     approvalLevelCode = '05';
 
-                } else if (discountPercent === 0) {
-                    approvalLevelCode = '00';
                 } else {
 
                     //  NORMAL DISCOUNT-BASED FLOW
