@@ -1,6 +1,6 @@
 {
   "name": "cxDiscountmatrix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple CAP project.",
   "dependencies": {
     "@cap-js/hana": "^2",
@@ -12,16 +12,20 @@
   },
   "devDependencies": {
     "@cap-js/sqlite": "^2.2.0",
-    "@sap/cds-dk": "^9",
+    "@sap/cds-dk": "^9.9.1",
+    "@sap/ux-ui5-tooling": "^1",
+    "@ui5/cli": "^4",
     "cds-plugin-ui5": "^0.13.0",
+    "eslint": "^10.0.0",
     "mbt": "^1.2.29",
     "rimraf": "^5.0.5"
   },
   "scripts": {
-    "start": "cds-serve",
+    "start": "node node_modules/@sap/cds/bin/serve.js",
+    "watch": "cds watch",
     "undeploy": "cf undeploy cxDiscountmatrix --delete-services --delete-service-keys --delete-service-brokers",
-    "build": "rimraf resources mta_archives && mbt build --mtar archive",
-    "deploy": "cf deploy mta_archives/archive.mtar --retries 1",
+    "build": "mbt build",
+    "deploy": "cf deploy mta_archives/cxDiscountmatrix_1.0.1.mtar --retries 1",
     "watch-discountapp": "cds watch --open cust.discountapp/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "private": true,
@@ -64,7 +68,43 @@
             "path": "/sap/c4c/api/v1/case-service"
           }
         }
+      },
+      "Organizational.Unit.Service": {
+        "kind": "rest",
+        "model": "srv/external/SalesSvcCloudV2_organizationalUnitService",
+        "[production]": {
+          "credentials": {
+            "destination": "SSC_V2_API",
+            "path": "/sap/c4c/api/v1/organizational-unit-service"
+          }
+        }
       }
+    },
+    "build": {
+      "tasks": [
+        {
+          "for": "hana",
+          "src": "db",
+          "options": {
+            "model": [
+              "db",
+              "srv",
+              "app"
+            ]
+          }
+        },
+        {
+          "for": "nodejs",
+          "src": "srv",
+          "options": {
+            "model": [
+              "db",
+              "srv",
+              "app"
+            ]
+          }
+        }
+      ]
     }
   },
   "workspaces": [
@@ -72,5 +112,10 @@
   ],
   "sapux": [
     "app/discountapp"
-  ]
+  ],
+  "ui5": {
+    "dependencies": [
+      "@sap/ux-ui5-tooling"
+    ]
+  }
 }

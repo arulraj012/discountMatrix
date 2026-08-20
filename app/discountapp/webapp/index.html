@@ -4,32 +4,279 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>discountapp</title>
+    <title>Discount Matrix</title>
     <style>
-        html, body, body > div, #container, #container-uiarea {
+        html, body {
             height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #shellContainer {
+            height: 100%;
+        }
+        /* Standard SAP Horizon shell header color */
+        .sapFShellBar {
+            background-color: #354a5f !important;
+        }
+        /* Make header text white for better visibility */
+        .sapFShellBar .sapFShellBarTitle,
+        .sapFShellBar .sapFShellBarSecondTitle,
+        .sapFShellBar .sapFShellBarMenuButton,
+        .sapFShellBar .sapMTitle {
+            color: #ffffff !important;
+        }
+        /* User info styling in menu header */
+        .userMenuHeader {
+            padding: 16px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .userMenuHeader .userName {
+            font-weight: bold;
+            font-size: 14px;
+            color: #32363a;
+            margin-bottom: 4px;
+        }
+        .userMenuHeader .userEmail {
+            font-size: 12px;
+            color: #6a6d70;
         }
     </style>
     <script
         id="sap-ui-bootstrap"
-        src="https://sapui5.hana.ondemand.com/1.146.0/resources/sap-ui-core.js"
+        src="https://ui5.sap.com/1.146.0/resources/sap-ui-core.js"
         data-sap-ui-theme="sap_horizon"
         data-sap-ui-resource-roots='{
             "cust.discountapp": "./"
         }'
-        data-sap-ui-on-init="module:sap/ui/core/ComponentSupport"
         data-sap-ui-compat-version="edge"
         data-sap-ui-async="true"
         data-sap-ui-frame-options="trusted"
+        data-sap-ui-xx-wait-for-theme="init"
     ></script>
+    <script>
+        sap.ui.require([
+            "sap/ui/core/ComponentContainer",
+            "sap/f/ShellBar",
+            "sap/m/Avatar",
+            "sap/m/ResponsivePopover",
+            "sap/m/VBox",
+            "sap/m/HBox",
+            "sap/m/Text",
+            "sap/m/Button",
+            "sap/m/Page",
+            "sap/m/App",
+            "sap/m/MessageBox",
+            "sap/m/MessageToast",
+            "sap/ui/core/Icon"
+        ], function(ComponentContainer, ShellBar, Avatar, ResponsivePopover, VBox, HBox, Text, Button, Page, App, MessageBox, MessageToast, Icon) {
+            "use strict";
+
+            // User information - In production, this would come from XSUAA/JWT token
+            var oUserInfo = {
+                name: "Current User",
+                email: "user@company.com",
+                initials: "CU"
+            };
+
+            // Try to get user info from the environment (for BTP apps)
+            function getUserInfo() {
+                // Check if running locally
+                var sCurrentHost = window.location.host;
+                var bIsLocal = sCurrentHost.indexOf("localhost") >= 0 || 
+                               sCurrentHost.indexOf("127.0.0.1") >= 0;
+                
+                if (bIsLocal) {
+                    // Local development - use placeholder
+                    oUserInfo.name = "Local User";
+                    oUserInfo.email = "local@development.com";
+                    oUserInfo.initials = "LU";
+                } else {
+                    // Try to fetch user info from /user-api/currentUser (if available)
+                    fetch('/user-api/currentUser')
+                        .then(function(response) {
+                            if (response.ok) {
+                                return response.json();
+                            }
+                            throw new Error('User API not available');
+                        })
+                        .then(function(data) {
+                            if (data) {
+                                oUserInfo.name = data.firstname + ' ' + data.lastname || data.name || "User";
+                                oUserInfo.email = data.email || "";
+                                // Generate initials from name
+                                var nameParts = oUserInfo.name.split(' ');
+                                oUserInfo.initials = nameParts.length >= 2 
+                                    ? (nameParts[0][0] + nameParts[nameParts.length-1][0]).toUpperCase()
+                                    : oUserInfo.name.substring(0, 2).toUpperCase();
+                                // Update avatar
+                                if (oAvatar) {
+                                    oAvatar.setInitials(oUserInfo.initials);
+                                }
+                            }
+                        })
+                        .catch(function(err) {
+                            console.log("Could not fetch user info:", err.message);
+                        });
+                }
+                return oUserInfo;
+            }
+
+            // Get user info
+            getUserInfo();
+
+            // Function to handle logout
+            function handleLogout() {
+                if (oUserPopover) {
+                    oUserPopover.close();
+                }
+                MessageBox.confirm("Are you sure you want to log out?", {
+                    title: "Confirm Logout",
+                    onClose: function(oAction) {
+                        if (oAction === MessageBox.Action.OK) {
+                            // Clear session storage
+                            try {
+                                sessionStorage.clear();
+                                localStorage.removeItem("sap-ui-language");
+                            } catch (e) {
+                                console.log("Error clearing storage:", e);
+                            }
+                            
+                            // Check if running locally
+                            var sCurrentHost = window.location.host;
+                            var bIsLocal = sCurrentHost.indexOf("localhost") >= 0 || 
+                                           sCurrentHost.indexOf("127.0.0.1") >= 0;
+                            
+                            if (bIsLocal) {
+                                MessageToast.show("Logged out successfully");
+                                window.location.href = "/";
+                            } else {
+                                // Production logout
+                                window.location.href = "/do/logout";
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create user popover (standard Fiori pattern)
+            var oUserPopover = new ResponsivePopover({
+                placement: "Bottom",
+                showHeader: false,
+                contentWidth: "300px",
+                content: [
+                    new VBox({
+                        items: [
+                            // User info header
+                            new HBox({
+                                alignItems: "Center",
+                                items: [
+                                    new Avatar({
+                                        initials: oUserInfo.initials,
+                                        displaySize: "M",
+                                        backgroundColor: "Accent6"
+                                    }).addStyleClass("sapUiSmallMarginEnd"),
+                                    new VBox({
+                                        items: [
+                                            new Text({
+                                                text: oUserInfo.name
+                                            }).addStyleClass("sapUiTinyMarginBottom").addStyleClass("sapMTextBold"),
+                                            new Text({
+                                                text: oUserInfo.email
+                                            }).addStyleClass("sapUiTinyMarginBottom sapMTextSmall")
+                                        ]
+                                    })
+                                ]
+                            }).addStyleClass("sapUiSmallMargin"),
+                            // Separator
+                            new sap.m.ToolbarSpacer({ height: "1px" }).addStyleClass("sapUiTinyMarginTop sapUiTinyMarginBottom"),
+                            // Logout button
+                            new Button({
+                                text: "Log Out",
+                                icon: "sap-icon://log",
+                                type: "Transparent",
+                                width: "100%",
+                                press: handleLogout
+                            }).addStyleClass("sapUiSmallMarginBegin sapUiSmallMarginEnd sapUiSmallMarginBottom")
+                        ]
+                    })
+                ]
+            });
+
+            // Create Avatar for profile
+            var oAvatar = new Avatar({
+                initials: oUserInfo.initials,
+                displaySize: "XS",
+                backgroundColor: "Accent6",
+                press: function(oEvent) {
+                    // Update user info in popover before opening
+                    var oContent = oUserPopover.getContent()[0];
+                    if (oContent && oContent.getItems) {
+                        var oUserHeader = oContent.getItems()[0];
+                        if (oUserHeader && oUserHeader.getItems) {
+                            var oUserVBox = oUserHeader.getItems()[1];
+                            if (oUserVBox && oUserVBox.getItems) {
+                                oUserVBox.getItems()[0].setText(oUserInfo.name);
+                                oUserVBox.getItems()[1].setText(oUserInfo.email);
+                            }
+                            var oAvatarInPopover = oUserHeader.getItems()[0];
+                            if (oAvatarInPopover) {
+                                oAvatarInPopover.setInitials(oUserInfo.initials);
+                            }
+                        }
+                    }
+                    oUserPopover.openBy(oEvent.getSource());
+                }
+            });
+
+            // Create ShellBar with SAP logo and user info
+            var oShellBar = new ShellBar({
+                title: "Discount Matrix",
+                secondTitle: "Approval Configuration",
+                showNavButton: false,
+                // SAP Logo - using official SAP logo URL
+                homeIcon: "https://www.sap.com/dam/application/shared/logos/sap-logo-svg.svg",
+                homeIconTooltip: "SAP",
+                profile: oAvatar
+            });
+
+            // Create Component Container for the app
+            var oComponentContainer = new ComponentContainer({
+                name: "cust.discountapp",
+                id: "container",
+                settings: {
+                    id: "cust.discountapp"
+                },
+                handleValidation: true,
+                height: "100%",
+                async: true
+            });
+
+            // Create Page with ShellBar as header
+            var oPage = new Page({
+                showHeader: false,
+                enableScrolling: false,
+                content: [oComponentContainer]
+            }).addStyleClass("sapUiNoContentPadding");
+
+            // Create App container
+            var oApp = new App({
+                pages: [oPage]
+            });
+
+            // Create main page with ShellBar
+            var oMainPage = new Page("mainPage", {
+                customHeader: oShellBar,
+                content: [oApp],
+                enableScrolling: false
+            }).addStyleClass("sapUiNoContentPadding");
+
+            // Place the main page
+            oMainPage.placeAt("shellContainer");
+        });
+    </script>
 </head>
 <body class="sapUiBody sapUiSizeCompact" id="content">
-    <div
-        data-sap-ui-component
-        data-name="cust.discountapp"
-        data-id="container"
-        data-settings='{"id" : "cust.discountapp"}'
-        data-handle-validation="true"
-    ></div>
+    <div id="shellContainer" style="height: 100%;"></div>
 </body>
 </html>

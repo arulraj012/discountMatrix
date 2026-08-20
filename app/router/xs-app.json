@@ -1,6 +1,16 @@
 {
   "welcomeFile": "/custdiscountapp/index.html",
+  "authenticationMethod": "route",
+  "logout": {
+    "logoutEndpoint": "/do/logout",
+    "logoutPage": "/"
+  },
   "routes": [
+    {
+      "source": "^/user-api/(.*)$",
+      "target": "$1",
+      "service": "sap-approuter-userapi"
+    },
     {
       "source": "^/api/(.*)$",
       "target": "/api/$1",

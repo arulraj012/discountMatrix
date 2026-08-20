@@ -1,0 +1,2 @@
+sap.ui.define(["sap/ui/core/routing/History"],function(t){"use strict";return{onBackPress:function(){var e=t.getInstance();var i=e.getPreviousHash();if(i!==undefined){window.history.go(-1)}else{try{var r=this.getView();if(r){var o=r.getController().getOwnerComponent();if(o){var n=o.getRouter();if(n){n.navTo("DiscountMatrixList",{},true);return}}}}catch(t){console.log("Router navigation failed, using browser history:",t)}window.history.go(-1)}}}});
+//# sourceMappingURL=ObjectPageExt.js.map

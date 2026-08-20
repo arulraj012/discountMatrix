@@ -1,0 +1,13 @@
+/* Hide the share button/icon in List Report and Object Page */
+.sapUiSizeCompact .sapFDynamicPageTitle .sapMMenuBtn[id*="Share"],
+.sapFDynamicPageTitle .sapMMenuBtn[id*="Share"],
+.sapFDynamicPageTitle button[id*="share"],
+.sapFDynamicPageTitle button[id*="Share"],
+[id*="fe::Share"],
+[id*="::Share"],
+.sapUshellShellHead-hdr-end .sapUshellShellHeadItm[id*="share"],
+button[data-sap-ui*="Share"],
+.sapMMenuBtn[aria-label*="Share"],
+.sapMBtn[aria-label*="Share"] {
+    display: none !important;
+}

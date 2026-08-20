@@ -1,24 +1,22 @@
 {
-  "name": "discountapp",
+  "name": "cust.discountapp",
   "version": "0.0.1",
-  "description": "Discount application.",
-  "keywords": [
-    "ui5",
-    "openui5",
-    "sapui5"
-  ],
-  "main": "webapp/index.html",
-  "dependencies": {},
+  "description": "Discount Matrix Fiori Elements Application",
+  "private": true,
   "devDependencies": {
-    "@ui5/cli": "^4.0.33",
-    "@sap/ux-ui5-tooling": "1",
-    "@sap-ux/eslint-plugin-fiori-tools": "^9.0.0",
-    "eslint": "^9",
-    "ui5-task-zipper": "^3.4.x"
+    "@sap/ux-ui5-tooling": "^1",
+    "@ui5/cli": "^4",
+    "ui5-task-zipper": "^3"
   },
   "scripts": {
-    "deploy-config": "npx -p @sap/ux-ui5-tooling fiori add deploy-config cf",
-    "build:cf": "ui5 build preload --clean-dest --config ui5-deploy.yaml --include-task=generateCachebusterInfo",
-    "build": "npm run build:cf"
+    "build": "ui5 build --config=ui5.yaml --clean-dest --dest dist",
+    "build:cf": "ui5 build preload --config=ui5-deploy.yaml --clean-dest --dest dist",
+    "deploy-config": "npx fiori add deploy-config cf"
+  },
+  "ui5": {
+    "dependencies": [
+      "@sap/ux-ui5-tooling",
+      "ui5-task-zipper"
+    ]
   }
 }

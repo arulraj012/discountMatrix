@@ -229,6 +229,19 @@ async function withdrawQuoteApproval(salesQuoteSrv, quoteId, etag, payload) {
     console.log("Approval withdrawn successfully");
 }
 
+async function getUserById(employeeId) {
+
+    const response = await executeHttpRequest(
+        { destinationName: 'SSC_V2_API' },
+        {
+            method: 'GET',
+                 url: `/sap/c4c/api/v1/iam-service/users?$filter=employeeId eq '${employeeId}'`
+        }
+    );
+
+    return response?.data?.value?.[0];
+}
+
 class salesquoteExthook extends cds.ApplicationService {
     init() {
 
@@ -530,12 +543,74 @@ class salesquoteExthook extends cds.ApplicationService {
                     // Get ETag
                     console.log(` Quote ID: ${quoteId}`);
 
+                    let businessRole = "1824"; // default Sales Employee
+
+                    try {
+
+                        const changedByUserId =
+                            currentImage?.adminData?.updatedBy;
+
+                        const ownerPartyId = currentImage?.owner?.partyId;
+
+                        console.log(
+                            "Quote  ownerPartyId:",
+                            ownerPartyId
+                        );
+
+                        if (ownerPartyId) {
+
+                            const user =
+                                await getUserById(ownerPartyId);
+
+                            console.log(
+                                "IAM User:",
+                                JSON.stringify(user)
+                            );
+
+                            const roles =
+                                user?.roles || [];
+
+                            console.log(
+                                "IAM Roles:",
+                                JSON.stringify(roles)
+                            );
+
+                            const isSalesManager =
+                                roles.some(role =>
+           
+                                    role?.displayId === "1822"
+                                );
+
+                            if (isSalesManager) {
+
+                                businessRole = "1822";
+
+                                console.log(
+                                    "Sales Manager detected"
+                                );
+
+                            } else {
+
+                                console.log(
+                                    "Sales Employee detected"
+                                );
+                            }
+                        }
+
+                    } catch (e) {
+
+                        console.error(
+                            "User role determination failed:",
+                            e?.message || e
+                        );
+                    }
 
                     // Build PATCH payload
                     const patchPayload = {
                         id: quoteId,
                         extensions: {
-                            Approval_Level: approvalLevelCode
+                            Approval_Level: approvalLevelCode,
+                            BusinessRole: businessRole
                         }
                     };
 

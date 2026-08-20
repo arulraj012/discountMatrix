@@ -49,7 +49,7 @@ class Sscv2EmployeeService extends cds.ApplicationService {
 			}
 		});
 
-
+		return super.init();
 	}
 }
 

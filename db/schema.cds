@@ -22,6 +22,7 @@ entity ApproverPartyRoles {
       RoleName : String(100);
 }
 
+
 // -------------------------------------------------------------
 // Approval Level Code List
 // -------------------------------------------------------------
@@ -36,7 +37,7 @@ type ApprovalLevel : String(2) enum {
 // -------------------------------------------------------------
 // Main Entity
 // -------------------------------------------------------------
-//@odata.draft.enabled
+@odata.draft.enabled
 @Title: 'Discount Matrix'
 entity discountMatrix : cuid, managed {
 
@@ -60,19 +61,17 @@ entity discountMatrix : cuid, managed {
   salesOffice          : String(20);
 
   @title                  : 'Business User Role'
-  @Common.ValueList.entity: 'automotive.discounts.BusinessUserRoles'
-  @Common.ValueList.type  : #fixed
-  @Common.ValueList.value : 'RoleCode'
-  @Common.ValueList.label : 'RoleName'
   businessUserRole     : String(100);
+  
+  // Association to BusinessUserRoles for text display
+  businessUserRoleRef  : Association to BusinessUserRoles on businessUserRoleRef.RoleCode = businessUserRole;
 
   @title                  : 'Approver Party Role'
   @description            : 'Party role code to assign Approver in Sales Cloud V2'
-  @Common.ValueList.entity: 'automotive.discounts.ApproverPartyRoles'
-  @Common.ValueList.type  : #fixed
-  @Common.ValueList.value : 'RoleCode'
-  @Common.ValueList.label : 'RoleName'
   approverPartyRole    : String(5);
+  
+  // Association to ApproverPartyRoles for text display
+  approverPartyRoleRef : Association to ApproverPartyRoles on approverPartyRoleRef.RoleCode = approverPartyRole;
 
   @title                  : 'Approver Employee ID'
   @description            : 'Identifier of approver employee in Sales Cloud V2 (e.g., "80001234")'

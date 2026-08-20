@@ -1,5 +1,5 @@
 {
-  "_version": "1.83.0",
+  "_version": "2.0.0",
   "sap.app": {
     "id": "cust.discountapp",
     "type": "application",
@@ -49,6 +49,8 @@
       "libs": {
         "sap.m": {},
         "sap.ui.core": {},
+        "sap.ui.unified": {},
+        "sap.f": {},
         "sap.fe.templates": {}
       }
     },
@@ -78,10 +80,13 @@
       }
     },
     "resources": {
-      "css": []
+      "css": [
+        {
+          "uri": "css/style.css"
+        }
+      ]
     },
     "routing": {
-      "config": {},
       "routes": [
         {
           "pattern": ":?query:",
@@ -103,6 +108,7 @@
             "settings": {
               "contextPath": "/DiscountMatrix",
               "variantManagement": "Page",
+              "showShareIcon": false,
               "navigation": {
                 "DiscountMatrix": {
                   "detail": {
@@ -110,10 +116,21 @@
                   }
                 }
               },
+              "initialLoad": "Enabled",
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
-                    "type": "ResponsiveTable"
+                    "type": "ResponsiveTable",
+                    "selectAll": true,
+                    "selectionMode": "Multi"
+                  },
+                  "actions": {
+                    "uploadAction": {
+                      "press": "cust.discountapp.ext.controller.ListReportExt.onUploadPress",
+                      "visible": true,
+                      "enabled": true,
+                      "text": "Upload"
+                    }
                   }
                 }
               }
@@ -127,7 +144,31 @@
           "options": {
             "settings": {
               "editableHeaderContent": false,
-              "contextPath": "/DiscountMatrix"
+              "contextPath": "/DiscountMatrix",
+              "showAnchorBar": true,
+              "showShareIcon": false,
+              "navigation": {},
+              "content": {
+                "header": {
+                  "actions": {
+                    "backAction": {
+                      "press": "cust.discountapp.ext.controller.ObjectPageExt.onBackPress",
+                      "visible": true,
+                      "enabled": true,
+                      "text": "{i18n>backButton}",
+                      "position": {
+                        "placement": "Before",
+                        "anchor": "DeleteAction"
+                      }
+                    }
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {}
+                }
+              }
             }
           }
         }
@@ -140,7 +181,10 @@
   },
   "sap.fe": {
     "app": {
-      "enableLazyLoading": true
+      "enableLazyLoading": true,
+      "share": {
+        "enabled": false
+      }
     }
   }
 }

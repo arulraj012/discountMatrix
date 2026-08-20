@@ -1,3 +1,5 @@
+using { Employee } from './external/SalesSvcCloudV2_employeeService';
+
 service Sscv2EmployeeService @(path: '/api/sscv2Employee') {
 
   function getCurrentEmployee()               returns {

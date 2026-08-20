@@ -1,7 +1,7 @@
 _schema-version: 3.3.0
 ID: cxDiscountmatrix
 description: A simple CAP project.
-version: 1.0.0
+version: 1.0.1
 modules:
   - name: cxDiscountmatrix-srv
     type: nodejs
@@ -17,6 +17,8 @@ modules:
     parameters:
       buildpack: nodejs_buildpack
       instances: 1
+      memory: 256M
+      disk-quota: 512M
     build-parameters:
       builder: npm-ci
   - name: cxDiscountmatrix-db-deployer
@@ -26,6 +28,8 @@ modules:
       - name: cxDiscountmatrix-db
     parameters:
       buildpack: nodejs_buildpack
+      memory: 256M
+      disk-quota: 512M
   - name: cxDiscountmatrix
     type: approuter.nodejs
     path: app/router
@@ -122,10 +126,9 @@ resources:
       service-plan: app-host
 parameters:
   deploy_mode: html5-repo
-  enable-parallel-deployments: true
+  enable-parallel-deployments: false
 build-parameters:
   before-all:
     - builder: custom
       commands:
-        - npm ci
         - npx cds build --production

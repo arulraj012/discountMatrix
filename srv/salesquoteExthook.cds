@@ -1,3 +1,5 @@
+using { Sales.Quote } from './external/SalesSvcCloudV2_salesQuoteService';
+
 @protocol: 'rest'
 @cds.server.body_parser.limit : '20mb'      // <<< FIX: increase payload limit for this service
 
